@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Listings</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      /* Red accents on theme-adaptive cards. The red is deepened slightly from
+         #ff0000 so button text clears WCAG AA contrast in light and dark. */
+      --ig-red: #C11212;
+      --ig-red-dark: #9E0F0F;
+      --ig-accent-tint: #FDECEC;
+      --ig-border-tint: #F3B4B4;
+      --ig-accent-text: #B00E0E;
+      --text-main: CanvasText;
+      --text-secondary: GrayText;
+      --card-bg: Canvas;
+      --border: ButtonBorder;
+      --disabled-bg: ButtonFace;
+      --disabled-text: GrayText;
+      --focus-ring: Highlight;
+      --card-shadow: rgba(15, 15, 15, 0.10);
+      --card-hover-shadow: rgba(225, 20, 20, 0.18);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ig-accent-tint: #3A1414;
+        --ig-border-tint: #7A2A2A;
+        --ig-accent-text: #F3B4B4;
+        --card-shadow: rgba(0, 0, 0, 0.30);
+        --card-hover-shadow: rgba(225, 20, 20, 0.30);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: transparent;
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 8px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .header {
+      align-items: center;
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+    }
+
+    .result-count {
+      background: var(--ig-accent-tint);
+      border: 1px solid var(--ig-border-tint);
+      border-radius: 20px;
+      color: var(--ig-accent-text);
+      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 10px;
+      text-align: center;
+    }
+
+    .carousel {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      padding: 4px 0 16px;
+      scroll-snap-type: x mandatory;
+      scrollbar-color: var(--ig-border-tint) transparent;
+      scrollbar-width: thin;
+    }
+
+    .carousel:focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .carousel::-webkit-scrollbar {
+      height: 5px;
+    }
+
+    .carousel::-webkit-scrollbar-thumb {
+      background: var(--ig-border-tint);
+      border-radius: 10px;
+    }
+
+    .job-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--card-shadow);
+      display: flex;
+      flex: 0 0 min(260px, calc(100vw - 32px));
+      flex-direction: column;
+      gap: 12px;
+      max-width: min(260px, calc(100vw - 32px));
+      min-width: 0;
+      overflow: hidden;
+      padding: 18px;
+      position: relative;
+      scroll-snap-align: start;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      width: min(260px, calc(100vw - 32px));
+    }
+
+    .job-card::before {
+      background: var(--ig-red);
+      content: "";
+      height: 3px;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 100%;
+    }
+
+    .job-card:hover {
+      border-color: var(--ig-border-tint);
+      box-shadow: 0 6px 20px var(--card-hover-shadow);
+      transform: translateY(-2px);
+    }
+
+    .job-tag {
+      background: var(--ig-accent-tint);
+      border: 1px solid var(--ig-border-tint);
+      border-radius: 20px;
+      color: var(--ig-accent-text);
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+
+    .job-title {
+      color: var(--text-main);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
+    .job-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .meta-row {
+      align-items: flex-start;
+      color: var(--text-secondary);
+      display: flex;
+      font-size: 13px;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .meta-icon {
+      flex-shrink: 0;
+    }
+
+    .meta-value {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .apply-btn {
+      align-items: center;
+      background: var(--ig-red);
+      border: 1px solid var(--ig-red);
+      border-radius: 8px;
+      color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      justify-content: center;
+      margin-top: auto;
+      min-height: 44px;
+      padding: 10px 16px;
+      text-align: center;
+      transition: background 0.2s ease;
+      width: 100%;
+    }
+
+    .apply-btn:hover,
+    .apply-btn:focus-visible {
+      background: var(--ig-red-dark);
+    }
+
+    .apply-btn:focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .apply-btn:disabled,
+    .apply-btn[aria-disabled="true"] {
+      background: var(--disabled-bg);
+      border-color: var(--border);
+      color: var(--disabled-text);
+      cursor: not-allowed;
+    }
+
+    .apply-btn[aria-busy="true"] {
+      cursor: progress;
+    }
+
+    .loading-state,
+    .empty-state {
+      color: var(--text-secondary);
+      font-size: 15px;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .spinner {
+      animation: spin 0.7s linear infinite;
+      border: 3px solid var(--ig-border-tint);
+      border-radius: 50%;
+      border-top-color: var(--ig-red);
+      height: 32px;
+      margin: 0 auto 16px;
+      width: 32px;
+    }
+
+    .sr-only {
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .job-card,
+      .apply-btn,
+      .spinner {
+        animation: none;
+        transition: none;
+      }
+    }
+
+    @media (forced-colors: active) {
+      .job-card::before {
+        background: Highlight;
+      }
+
+      .job-tag,
+      .result-count {
+        background: Canvas;
+        border-color: ButtonText;
+        color: CanvasText;
+      }
+
+      .apply-btn:not(:disabled) {
+        background: ButtonFace;
+        border-color: ButtonText;
+        color: ButtonText;
+      }
+
+      .apply-btn:not(:disabled):hover,
+      .apply-btn:not(:disabled):focus-visible {
+        background: Highlight;
+        color: HighlightText;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="root" aria-busy="true" aria-live="polite">
+    <div class="loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      Loading opportunities...
+    </div>
+  </main>
+
+  <script type="module">
+    const root = document.getElementById("root");
+    const MAX_VISIBLE_CARDS = 8;
+    const MAX_URL_CHARACTERS = 4096;
+    const MAX_URL_BYTES = 4096;
+    const ALLOWED_APPLY_ORIGIN = "__INERGROUP_APPLY_ORIGIN__";
+    const textEncoder = new TextEncoder();
+    const RESULT_STATE_MESSAGES = Object.freeze({
+      invalid_request: "The job search request could not be processed. Try a role or keyword with valid filters.",
+      unavailable: "Job search is temporarily unavailable. Please try again shortly.",
+    });
+
+    function renderJobs(payload) {
+      const toolOutput = payload?.structuredContent || payload;
+      const data = toolOutput?.type === "application/json" && toolOutput?.data
+        ? toolOutput.data
+        : toolOutput;
+
+      if (!data || typeof data !== "object" || typeof data.status !== "string") {
+        renderState("Unable to display job listings right now.");
+        return;
+      }
+
+      if (data.status === "no_results") {
+        renderState("No output found");
+        return;
+      }
+
+      if (data.status !== "ok") {
+        renderState(RESULT_STATE_MESSAGES[data.status] || "Unable to display job listings right now.");
+        return;
+      }
+
+      if (!Array.isArray(data.jobs)) {
+        renderState("Unable to display job listings right now.");
+        return;
+      }
+
+      const validJobObjects = data.jobs.filter((job) => job && typeof job === "object");
+      if (validJobObjects.length === 0) {
+        renderState("Unable to display job listings right now.");
+        return;
+      }
+
+      const visibleJobs = validJobObjects.slice(0, MAX_VISIBLE_CARDS);
+      const declaredTotal = Number.isSafeInteger(data.totalResults) && data.totalResults >= 0
+        ? data.totalResults
+        : validJobObjects.length;
+      const total = Math.max(visibleJobs.length, declaredTotal);
+
+      const cards = visibleJobs.map((job) => {
+        const safeUrl = toAllowedApplicationUrl(job.applicationUrl);
+        const title = job.title || "Open position";
+        const displayedLocation = job.location || job.workplace || "";
+
+        return `
+          <article class="job-card">
+            <div class="job-tag">Job listing</div>
+            <h3 class="job-title">${escapeHtml(title)}</h3>
+            <div class="job-meta">
+              ${displayedLocation ? `<div class="meta-row">
+                <span class="meta-icon" aria-hidden="true">📍</span>
+                <span class="meta-value">${escapeHtml(displayedLocation)}</span>
+              </div>` : ""}
+            </div>
+            ${safeUrl
+              ? `<button type="button" data-url="${escapeHtml(safeUrl)}" class="apply-btn" aria-label="View and apply for ${escapeHtml(title)}">View &amp; Apply →</button>`
+              : '<button type="button" class="apply-btn" disabled aria-disabled="true">Application unavailable</button>'}
+          </article>`;
+      }).join("");
+
+      const countLabel = `Showing ${visibleJobs.length} of ${total} ${total === 1 ? "result" : "results"}`;
+      root.innerHTML = `
+        <div class="header">
+          <div class="result-count" role="status">${escapeHtml(countLabel)}</div>
+        </div>
+        <p id="carousel-instructions" class="sr-only">Use the left and right arrow keys to move through the job listings.</p>
+        <section class="carousel" role="region" tabindex="0" aria-describedby="carousel-instructions" aria-label="${escapeHtml(countLabel)} in the job listings carousel">
+          ${cards}
+        </section>
+        <p id="navigation-status" class="sr-only" aria-live="polite"></p>`;
+      root.setAttribute("aria-busy", "false");
+      setupCarouselKeyboard();
+    }
+
+    function renderState(message) {
+      root.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+      root.setAttribute("aria-busy", "false");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function toAllowedApplicationUrl(value) {
+      if (typeof value !== "string") return "";
+      const candidate = value;
+      if (
+        !candidate ||
+        candidate !== candidate.trim() ||
+        candidate.length > MAX_URL_CHARACTERS ||
+        textEncoder.encode(candidate).byteLength > MAX_URL_BYTES ||
+        /[\p{Cc}\p{Cf}\p{Cs}\p{Default_Ignorable_Code_Point}\s]/u.test(candidate)
+      ) return "";
+
+      try {
+        const url = new URL(candidate);
+        if (
+          url.protocol !== "https:" ||
+          url.username ||
+          url.password ||
+          url.origin !== ALLOWED_APPLY_ORIGIN
+        ) return "";
+        return candidate;
+      } catch {
+        return "";
+      }
+    }
+
+    async function openExternalUrl(url) {
+      const safeUrl = toAllowedApplicationUrl(url);
+      if (!safeUrl || typeof window.openai?.openExternal !== "function") return false;
+
+      try {
+        await window.openai.openExternal({ href: safeUrl });
+        return true;
+      } catch (error) {
+        console.warn("The application link could not be opened through the ChatGPT bridge.", error);
+        return false;
+      }
+    }
+
+    root.addEventListener("click", async (event) => {
+      if (!(event.target instanceof Element)) return;
+      const button = event.target.closest("button[data-url]");
+      if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+
+      const originalLabel = button.textContent;
+      const status = root.querySelector("#navigation-status");
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      button.textContent = "Opening…";
+      if (status) status.textContent = "";
+
+      const opened = await openExternalUrl(button.getAttribute("data-url"));
+
+      if (button.isConnected) {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.textContent = originalLabel;
+      }
+      if (!opened && status) {
+        status.textContent = "The application link could not be opened. Please try again.";
+      }
+    });
+
+    function setupCarouselKeyboard() {
+      const carousel = root.querySelector(".carousel");
+      if (!carousel) return;
+
+      carousel.addEventListener("keydown", (event) => {
+        if (event.target !== carousel) return;
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+
+        event.preventDefault();
+        const firstCard = carousel.querySelector(".job-card");
+        const styles = getComputedStyle(carousel);
+        const gap = Number.parseFloat(styles.columnGap || styles.gap) || 0;
+        const step = firstCard ? firstCard.getBoundingClientRect().width + gap : carousel.clientWidth;
+        const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+
+        if (event.key === "Home") {
+          carousel.scrollTo({ left: 0, behavior });
+        } else if (event.key === "End") {
+          carousel.scrollTo({ left: carousel.scrollWidth - carousel.clientWidth, behavior });
+        } else {
+          carousel.scrollBy({ left: event.key === "ArrowRight" ? step : -step, behavior });
+        }
+      });
+    }
+
+    window.addEventListener("openai:set_globals", (event) => {
+      const globals = event.detail?.globals;
+      if (globals?.toolOutput) renderJobs(globals.toolOutput);
+    });
+
+    if (window.openai?.toolOutput) renderJobs(window.openai.toolOutput);
+    if (window.openai?.onToolOutput) {
+      window.openai.onToolOutput((data) => renderJobs(data));
+    }
+  </script>
+</body>
+</html>

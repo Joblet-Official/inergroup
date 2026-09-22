@@ -1,0 +1,10 @@
+node_modules/
+dist/*
+!dist/index.js
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+data/snapshots/
+.env
+*.log
