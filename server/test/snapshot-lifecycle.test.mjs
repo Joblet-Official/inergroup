@@ -794,8 +794,8 @@ test("enforces the scanned tool contract and distinct result states", async () =
   assert.deepEqual(Object.keys(descriptor.inputSchema.properties).sort(), ["limit", "market", "query"]);
   assert.equal(descriptor.inputSchema.properties.limit.maximum, 50);
   assert.match(descriptor.inputSchema.properties.limit.description, /at most eight/i);
-  assert.match(descriptor.description, /at most one call/i);
-  assert.match(descriptor.description, /do not automatically retry/i);
+  assert.match(descriptor.description, /one tool call per explicit search request/i);
+  assert.match(descriptor.description, /do not broaden the query, substitute synonyms, or retry/i);
   assert.deepEqual(
     descriptor.outputSchema.properties.data.properties.status.enum,
     ["ok", "no_results", "invalid_request", "unavailable"],
