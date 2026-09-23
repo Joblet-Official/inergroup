@@ -2829,7 +2829,7 @@ function buildMcpServer() {
 }
 
 // OpenAI domain verification challenge
-const OPENAI_APPS_CHALLENGE_TOKEN = "MTb_KfghTb2_GX4vGjcRj38JRsgoCColRFpZ9HxrJ6I";
+const OPENAI_APPS_CHALLENGE_TOKEN = "rll-zCfL2YbtiMn87PtXFhbalyat4TvfXS2O0l7b_mY";
 
 app.get("/.well-known/openai-apps-challenge", (_req, res) => {
   res.type("text/plain").send(OPENAI_APPS_CHALLENGE_TOKEN);
