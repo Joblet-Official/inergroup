@@ -45,17 +45,15 @@ be overridden with environment variables:
 ```text
 INERGROUP_FEED_URL=https://joveo-outbound-feeds-prod.s3-accelerate.amazonaws.com/joveo-1a48b557/3b5ca64b.xml
 INERGROUP_APPLY_HOST=tnl2.jometer.com
-INERGROUP_WIDGET_DOMAIN=https://<your-render-service>.onrender.com
 ```
 
 `INERGROUP_APPLY_HOST` locks every application link to a single host: any listing
-whose apply URL is not HTTPS on that host is rejected. `INERGROUP_WIDGET_DOMAIN`
-must match the public origin the widget is served from (used for the ChatGPT
-App CSP).
+whose apply URL is not HTTPS on that host is rejected. The widget origin used
+for the ChatGPT App CSP is fixed to `https://mcp.inergroup.joveo.com`.
 
 ## Persistent production storage
 
-On Render, point both database settings at a mounted persistent disk. For
+On the production host, point both database settings at mounted persistent storage. For
 example:
 
 ```text
@@ -84,16 +82,13 @@ per snapshot directory.
 - `MAX_FEED_MB`: maximum downloaded feed size; default 512 MB.
 - `INERGROUP_MCP_BODY_LIMIT_BYTES`: maximum MCP JSON request body; default 65536 bytes.
 - `INERGROUP_MCP_MAX_CONCURRENT_REQUESTS`: maximum in-flight MCP requests; default 64.
-- `INERGROUP_MCP_RATE_LIMIT_WINDOW_MS`: per-client rate window; default 60000 ms.
-- `INERGROUP_MCP_RATE_LIMIT_MAX_REQUESTS`: requests allowed per client and window; default 600.
-- `INERGROUP_MCP_RATE_LIMIT_MAX_CLIENTS`: maximum tracked client windows; default 10000.
 
 `/health` returns HTTP 200 for fresh or degraded-but-usable snapshots and HTTP
 503 only when no valid snapshot exists or the configured maximum age is
 exceeded. Widget resources remain available in every state.
 
 Every failed refresh emits a structured JSON log event named
-`inergroup_feed_refresh_failed`. Configure a Render log alert for that event
+`inergroup_feed_refresh_failed`. Configure a platform log alert for that event
 (and for repeated `degraded` health checks) so an operator is notified while the
 service continues using its last-good snapshot.
 

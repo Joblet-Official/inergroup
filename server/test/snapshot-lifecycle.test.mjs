@@ -286,7 +286,7 @@ async function mcpRequest(child, method, params) {
 }
 
 async function readWidget(child) {
-  return mcpRequest(child, "resources/read", { uri: "ui://inergroup/job-cards-v1.html" });
+  return mcpRequest(child, "resources/read", { uri: "ui://inergroup/job-cards-v2.html" });
 }
 
 async function search(child, query, limit = 6) {
@@ -910,30 +910,4 @@ test("enforces the scanned tool contract and distinct result states", async () =
 
   const afterOversized = await callSearch(app, { query: "Statistics Expert" });
   assert.equal(afterOversized.result.structuredContent.data.status, "ok");
-});
-
-test("rate-limits abusive MCP clients without changing ordinary requests", async () => {
-  const directory = createTemporaryDirectory();
-  const dbPath = path.join(directory, "jobs.db");
-  createLegacySnapshot(dbPath);
-  const app = await startApp({
-    dbPath,
-    snapshotDir: path.join(directory, "snapshots"),
-    feedUrl: "http://127.0.0.1:9/unavailable.xml",
-    env: {
-      SYNC_INTERVAL_MS: "86400000",
-      INERGROUP_MCP_RATE_LIMIT_MAX_REQUESTS: "1",
-    },
-  });
-
-  const first = await mcpRequest(app, "tools/list", {});
-  assert.ok(first.result.tools.some((tool) => tool.name === "search_inergroup_job_listings"));
-  const second = await fetch(`${app.baseUrl}/mcp`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
-  });
-  assert.equal(second.status, 429);
-  assert.equal(second.headers.get("retry-after"), "60");
-  assert.equal((await second.json()).error.code, -32000);
 });

@@ -66,7 +66,7 @@ function parseApplyOrigin(configuredHost) {
 }
 const { host: APPLY_URL_HOST, origin: APPLY_URL_ORIGIN, } = parseApplyOrigin(process.env.INERGROUP_APPLY_HOST || "tnl2.jometer.com");
 // Public domain the widget is served from (used for the ChatGPT App CSP).
-const WIDGET_DOMAIN = process.env.INERGROUP_WIDGET_DOMAIN || "https://inergroup-jobs.onrender.com";
+const WIDGET_DOMAIN = "https://mcp.inergroup.joveo.com";
 function positiveIntegerSetting(name, fallback, minimum = 1) {
     const raw = process.env[name];
     const value = raw === undefined || raw === "" ? fallback : Number(raw);
@@ -113,9 +113,6 @@ const SNAPSHOT_RETENTION = positiveIntegerSetting("INERGROUP_SNAPSHOT_RETENTION"
 const MAX_FEED_MB = positiveIntegerSetting("MAX_FEED_MB", 512);
 const MCP_BODY_LIMIT_BYTES = positiveIntegerSetting("INERGROUP_MCP_BODY_LIMIT_BYTES", 64 * 1024);
 const MCP_MAX_CONCURRENT_REQUESTS = positiveIntegerSetting("INERGROUP_MCP_MAX_CONCURRENT_REQUESTS", 64);
-const MCP_RATE_LIMIT_WINDOW_MS = positiveIntegerSetting("INERGROUP_MCP_RATE_LIMIT_WINDOW_MS", 60_000);
-const MCP_RATE_LIMIT_MAX_REQUESTS = positiveIntegerSetting("INERGROUP_MCP_RATE_LIMIT_MAX_REQUESTS", 600);
-const MCP_RATE_LIMIT_MAX_CLIENTS = positiveIntegerSetting("INERGROUP_MCP_RATE_LIMIT_MAX_CLIENTS", 10_000);
 // The historical path remains a supported startup fallback. New refreshes use
 // immutable, versioned files in SNAPSHOT_DIR so an open SQLite file is never
 // replaced underneath a request (important on both Windows and Linux).
@@ -134,7 +131,7 @@ const SNAPSHOT_STATE_VERSION = 1;
 const IS_REFRESH_WORKER = process.env.INERGROUP_REFRESH_WORKER === "1";
 // ChatGPT uses the resource URI as the widget cache key. Bump this version
 // whenever the widget HTML or resource metadata changes.
-const WIDGET_URI = "ui://inergroup/job-cards-v1.html";
+const WIDGET_URI = "ui://inergroup/job-cards-v2.html";
 const PUBLIC_ASSET_DIR = path.join(PROJECT_ROOT, "server", "public");
 const WIDGET_PATH = path.join(PUBLIC_ASSET_DIR, "widget", "job-cards.html");
 const APPLY_ORIGIN_PLACEHOLDER = "__INERGROUP_APPLY_ORIGIN__";
@@ -2188,39 +2185,9 @@ const parseMcpJson = express.json({
     strict: true,
     type: ["application/json", "application/*+json"],
 });
-const mcpRateWindows = new Map();
-let nextMcpRateCleanupMs = 0;
 let activeMcpRequests = 0;
 function sendJsonRpcHttpError(res, status, code, message) {
     res.status(status).json({ jsonrpc: "2.0", error: { code, message }, id: null });
-}
-function limitMcpRate(req, res, next) {
-    const now = Date.now();
-    if (now >= nextMcpRateCleanupMs) {
-        for (const [key, window] of mcpRateWindows) {
-            if (now - window.startedAtMs >= MCP_RATE_LIMIT_WINDOW_MS)
-                mcpRateWindows.delete(key);
-        }
-        nextMcpRateCleanupMs = now + MCP_RATE_LIMIT_WINDOW_MS;
-    }
-    const clientKey = req.ip || req.socket.remoteAddress || "unknown";
-    let window = mcpRateWindows.get(clientKey);
-    if (!window && mcpRateWindows.size >= MCP_RATE_LIMIT_MAX_CLIENTS) {
-        sendJsonRpcHttpError(res, 503, -32000, "Server is temporarily busy.");
-        return;
-    }
-    if (!window || now - window.startedAtMs >= MCP_RATE_LIMIT_WINDOW_MS) {
-        window = { startedAtMs: now, count: 0 };
-        mcpRateWindows.set(clientKey, window);
-    }
-    if (window.count >= MCP_RATE_LIMIT_MAX_REQUESTS) {
-        const retryAfterSeconds = Math.max(1, Math.ceil((window.startedAtMs + MCP_RATE_LIMIT_WINDOW_MS - now) / 1000));
-        res.set("Retry-After", String(retryAfterSeconds));
-        sendJsonRpcHttpError(res, 429, -32000, "Request rate limit exceeded. Please retry shortly.");
-        return;
-    }
-    window.count += 1;
-    next();
 }
 function limitMcpConcurrency(_req, res, next) {
     if (activeMcpRequests >= MCP_MAX_CONCURRENT_REQUESTS) {
@@ -2550,7 +2517,7 @@ async function handleMcpRequest(req, res) {
     }
 }
 app.route("/mcp")
-    .post(limitMcpRate, parseMcpJson, limitMcpConcurrency, handleMcpRequest)
+    .post(parseMcpJson, limitMcpConcurrency, handleMcpRequest)
     .all((_req, res) => {
     res.set("Allow", "POST");
     res.status(405).json({
